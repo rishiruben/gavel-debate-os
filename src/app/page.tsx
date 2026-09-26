@@ -12,26 +12,31 @@ import {
   Sparkles, 
   ArrowRight, 
   Cpu, 
-  CheckCircle2, 
-  AlertCircle, 
+  Radio,
+  Search,
+  BookOpen,
   Zap,
   Vote,
   Play
 } from 'lucide-react';
+import { ShowMode } from '@/types/debate';
 
 const SUGGESTIONS = [
   'Resolved: AI code generation will eliminate junior software engineers by 2028.',
-  'Resolved: Working remotely produces higher collective velocity than in-office mandates.',
+  'Discussion: What makes high-velocity engineering cultures actually work in 2026?',
   'Resolved: Open source foundation models provide safer long-term outcomes than closed proprietary models.',
-  'Resolved: Nuclear fission is strictly superior to pure renewables for base-load power.',
+  'Discussion: The transition from monolithic AI tools to autonomous agent swarms.',
 ];
 
 export default function Home() {
   const router = useRouter();
-  const [proposition, setProposition] = useState(SUGGESTIONS[0]);
-  const [p1Name, setP1Name] = useState('Alex Chen');
-  const [p2Name, setP2Name] = useState('Marcus Vance');
-  const [formatName, setFormatName] = useState('Standard 3-Round Showdown');
+  const [mode, setMode] = useState<ShowMode>('PODCAST');
+  const [proposition, setProposition] = useState(SUGGESTIONS[1]);
+  const [p1Name, setP1Name] = useState('Sarah Lin');
+  const [p1Role, setP1Role] = useState('Host');
+  const [p2Name, setP2Name] = useState('David Kumar');
+  const [p2Role, setP2Role] = useState('Guest');
+  const [formatName, setFormatName] = useState('Podcast Sidekick & Live Fact-Checker');
   const [isCreating, setIsCreating] = useState(false);
   const [lemonadeStatus, setLemonadeStatus] = useState<{
     isConnected: boolean;
@@ -66,6 +71,25 @@ export default function Home() {
       });
   }, []);
 
+  const handleModeChange = (newMode: ShowMode) => {
+    setMode(newMode);
+    if (newMode === 'PODCAST') {
+      setProposition(SUGGESTIONS[1]);
+      setP1Name('Sarah Lin');
+      setP1Role('Host');
+      setP2Name('David Kumar');
+      setP2Role('Guest');
+      setFormatName('Podcast Sidekick & Live Fact-Checker');
+    } else {
+      setProposition(SUGGESTIONS[0]);
+      setP1Name('Alex Chen');
+      setP1Role('Speaker 1');
+      setP2Name('Marcus Vance');
+      setP2Role('Speaker 2');
+      setFormatName('Standard 3-Round Showdown');
+    }
+  };
+
   const handleCreateRoom = async (simulate: boolean = false) => {
     setIsCreating(true);
     try {
@@ -75,8 +99,11 @@ export default function Home() {
         body: JSON.stringify({
           proposition,
           p1Name,
+          p1Role,
           p2Name,
+          p2Role,
           formatName,
+          mode,
         }),
       });
       const data = await res.json();
@@ -112,10 +139,10 @@ export default function Home() {
                   GAVEL
                 </span>
                 <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  Debate OS
+                  Broadcast OS
                 </span>
               </div>
-              <p className="text-xs text-slate-400">The Live AI-Moderated Debate Harness</p>
+              <p className="text-xs text-slate-400">Live AI Show Assistant & Discussion Harness</p>
             </div>
           </div>
 
@@ -143,21 +170,49 @@ export default function Home() {
       </header>
 
       {/* Hero & Creator Room Form */}
-      <section className="max-w-5xl mx-auto px-6 py-12 w-full">
-        <div className="text-center space-y-4 mb-10">
+      <section className="max-w-5xl mx-auto px-6 py-10 w-full">
+        <div className="text-center space-y-4 mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold">
             <Sparkles className="w-3.5 h-3.5" />
             Turn-Key Live Stream Show in 60 Seconds
           </div>
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-white max-w-3xl mx-auto leading-[1.15]">
-            Turn Any Stream Into an{' '}
+            The Live{' '}
             <span className="bg-gradient-to-r from-amber-400 via-amber-200 to-yellow-500 bg-clip-text text-transparent">
-              AI-Moderated Debate Show
+              Podcast Sidekick & Debate Referee
             </span>
           </h1>
           <p className="text-slate-400 text-base max-w-2xl mx-auto">
-            Deterministic speaker attribution, continuous claim ledgers, synchronized OBS overlays, and the signature 100-point referee scorecards with corner coaching (<em className="text-amber-300 font-medium not-italic">&ldquo;The Second&rdquo;</em>).
+            Live speaker isolation, automatic fact lookups, real-time claim ledgers, and OBS graphics for podcasts, discussions, and competitive debate shows.
           </p>
+        </div>
+
+        {/* Mode Selector Tabs */}
+        <div className="flex justify-center mb-6">
+          <div className="bg-slate-900 border border-slate-800 p-1 rounded-xl flex gap-1">
+            <button
+              onClick={() => handleModeChange('PODCAST')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold transition ${
+                mode === 'PODCAST'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Radio className="w-4 h-4" />
+              Podcast Sidekick & Discussion Helper
+            </button>
+            <button
+              onClick={() => handleModeChange('DEBATE')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold transition ${
+                mode === 'DEBATE'
+                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Gavel className="w-4 h-4" />
+              Debate Showdown & Referee
+            </button>
+          </div>
         </div>
 
         {/* Room Setup Card */}
@@ -165,17 +220,17 @@ export default function Home() {
           <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
 
           <div className="space-y-6">
-            {/* Proposition */}
+            {/* Topic / Proposition */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">
-                Debate Proposition / Resolution
+                {mode === 'PODCAST' ? 'Episode Title or Core Topic' : 'Debate Proposition / Resolution'}
               </label>
               <input
                 type="text"
                 value={proposition}
                 onChange={(e) => setProposition(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-3.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition"
-                placeholder="e.g. Resolved: AI code generation will eliminate junior engineers by 2028."
+                placeholder={mode === 'PODCAST' ? "e.g. Episode 42: The Future of Autonomous Coding" : "e.g. Resolved: AI code generation will eliminate junior engineers by 2028."}
               />
               {/* Presets */}
               <div className="mt-2.5 flex flex-wrap gap-2">
@@ -191,14 +246,23 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Debaters */}
+            {/* Participants */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-slate-950/60 border border-blue-500/30 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-blue-400">
-                    Affirmative Speaker
-                  </span>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-blue-400">
+                      Speaker 1
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={p1Role}
+                    onChange={(e) => setP1Role(e.target.value)}
+                    placeholder="Role (e.g. Host)"
+                    className="text-[11px] bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-blue-300 w-24 text-right focus:outline-none"
+                  />
                 </div>
                 <input
                   type="text"
@@ -208,30 +272,41 @@ export default function Home() {
                 />
               </div>
 
-              <div className="bg-slate-950/60 border border-rose-500/30 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-rose-400">
-                    Negative Speaker
-                  </span>
+              <div className="bg-slate-950/60 border border-amber-500/30 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                      Speaker 2
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={p2Role}
+                    onChange={(e) => setP2Role(e.target.value)}
+                    placeholder="Role (e.g. Guest)"
+                    className="text-[11px] bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-amber-300 w-24 text-right focus:outline-none"
+                  />
                 </div>
                 <input
                   type="text"
                   value={p2Name}
                   onChange={(e) => setP2Name(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-rose-400"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400"
                 />
               </div>
             </div>
 
-            {/* Format */}
+            {/* Feature Highlights */}
             <div className="flex items-center justify-between border-t border-slate-800/80 pt-4">
               <div className="flex items-center gap-3">
                 <Activity className="w-4 h-4 text-amber-400" />
-                <span className="text-xs text-slate-400">Format:</span>
-                <span className="text-xs font-semibold text-slate-200">{formatName}</span>
+                <span className="text-xs text-slate-400">Capabilities:</span>
+                <span className="text-xs font-semibold text-slate-200">
+                  {mode === 'PODCAST' ? 'Live Fact-Check • Instant Lookups • Talk Airtime Balance' : '100-pt Rubric • Dropped Points • Corner Coaching'}
+                </span>
               </div>
-              <span className="text-xs text-slate-500">60s Speeches • Cross-Exam • 60s Breaks</span>
+              <span className="text-xs text-slate-500">60s Clock • OBS Overlay Ready</span>
             </div>
 
             {/* Launch Actions */}
@@ -242,7 +317,7 @@ export default function Home() {
                 className="w-full sm:flex-1 py-4 px-6 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/25 transition disabled:opacity-50 cursor-pointer"
               >
                 <Zap className="w-4 h-4 fill-slate-950 stroke-none" />
-                {isCreating ? 'Creating Room...' : 'Launch Live Debate Room'}
+                {isCreating ? 'Creating Room...' : (mode === 'PODCAST' ? 'Launch Podcast Sidekick Room' : 'Launch Debate Showdown Room')}
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -259,21 +334,21 @@ export default function Home() {
         </div>
 
         {/* The 4 Connected Surfaces */}
-        <div className="mt-14 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
             <div className="h-8 w-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center mb-3">
-              <Gavel className="w-4 h-4" />
+              <Radio className="w-4 h-4" />
             </div>
             <h3 className="text-sm font-bold text-white mb-1">Host Control Room</h3>
-            <p className="text-xs text-slate-400">Stage director, round clocks, live claim ledger, score release gate, and emergency controls.</p>
+            <p className="text-xs text-slate-400">Director clock, live claim ledger, instant lookup tool, and stage manager controls.</p>
           </div>
 
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
             <div className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center mb-3">
               <Mic className="w-4 h-4" />
             </div>
-            <h3 className="text-sm font-bold text-white mb-1">Debater Stage</h3>
-            <p className="text-xs text-slate-400">Frictionless guest links, mic level checks, teleprompter timers, and corner coaching.</p>
+            <h3 className="text-sm font-bold text-white mb-1">Speaker Green Room</h3>
+            <p className="text-xs text-slate-400">Zero-install guest link with mic check, live teleprompter clock, and speaking status.</p>
           </div>
 
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
@@ -281,7 +356,7 @@ export default function Home() {
               <Tv className="w-4 h-4" />
             </div>
             <h3 className="text-sm font-bold text-white mb-1">OBS Broadcast Overlay</h3>
-            <p className="text-xs text-slate-400">Transparent 1080p browser-source URL with lower thirds, animated scorecards, and victory cards.</p>
+            <p className="text-xs text-slate-400">Transparent 1080p URL with dynamic lower thirds, claim checks, and talk balance meters.</p>
           </div>
 
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4">
@@ -289,14 +364,14 @@ export default function Home() {
               <Vote className="w-4 h-4" />
             </div>
             <h3 className="text-sm font-bold text-white mb-1">Audience Companion</h3>
-            <p className="text-xs text-slate-400">Live mobile voting generating the signature &ldquo;Audience vs. AI Gavel&rdquo; broadcast comparison.</p>
+            <p className="text-xs text-slate-400">Live mobile listener interaction, polls, and instant reaction bursts on stream.</p>
           </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="border-t border-slate-800/80 py-6 px-6 text-center text-xs text-slate-500">
-        <p>Gavel Debate Operating System • Powered by Lemonade Server local LLM architecture</p>
+        <p>Gavel Broadcast OS • Flexible Podcast Sidekick & Live Debate Referee • Powered by Lemonade Server</p>
       </footer>
     </main>
   );

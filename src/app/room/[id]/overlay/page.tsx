@@ -234,7 +234,7 @@ export default function OBSBroadcastOverlay({ params }: { params: Promise<{ id: 
                 )}
               </div>
               <span className="text-[11px] font-bold uppercase text-blue-400 tracking-wider">
-                Affirmative
+                {room.participants.p1.role || 'Speaker 1'}
               </span>
             </div>
           </div>
@@ -247,15 +247,15 @@ export default function OBSBroadcastOverlay({ params }: { params: Promise<{ id: 
           </div>
         </div>
 
-        {/* Debater 2 (Negative - Red) */}
+        {/* Debater 2 */}
         <div className={`rounded-2xl p-4 transition-all duration-300 border shadow-2xl backdrop-blur-md flex items-center justify-between ${
           isP2Speaking 
-            ? 'bg-rose-950/90 border-rose-400 shadow-rose-500/20 scale-[1.02]' 
+            ? 'bg-amber-950/90 border-amber-400 shadow-amber-500/20 scale-[1.02]' 
             : 'bg-slate-950/80 border-slate-800 opacity-90'
         }`}>
           <div className="flex items-center gap-3.5">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-lg text-white border ${
-              isP2Speaking ? 'bg-rose-600 border-rose-300 animate-pulse' : 'bg-slate-800 border-slate-700'
+              isP2Speaking ? 'bg-amber-600 border-amber-300 animate-pulse' : 'bg-slate-800 border-slate-700'
             }`}>
               {room.participants.p2.name.charAt(0)}
             </div>
@@ -263,25 +263,40 @@ export default function OBSBroadcastOverlay({ params }: { params: Promise<{ id: 
               <div className="flex items-center gap-2">
                 <span className="text-base font-extrabold text-white">{room.participants.p2.name}</span>
                 {isP2Speaking && (
-                  <span className="flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded bg-rose-500 text-slate-950">
+                  <span className="flex items-center gap-1 text-[10px] font-black uppercase px-2 py-0.5 rounded bg-amber-500 text-slate-950">
                     <Mic className="w-3 h-3" /> Speaking
                   </span>
                 )}
               </div>
-              <span className="text-[11px] font-bold uppercase text-rose-400 tracking-wider">
-                Negative
+              <span className="text-[11px] font-bold uppercase text-amber-400 tracking-wider">
+                {room.participants.p2.role || 'Speaker 2'}
               </span>
             </div>
           </div>
 
           <div className="text-right">
             <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Score</span>
-            <span className="font-mono text-2xl font-black text-rose-300">
+            <span className="font-mono text-2xl font-black text-amber-300">
               {room.participants.p2.scoreTotal}
             </span>
           </div>
         </div>
       </div>
+
+      {/* Floating Live Sidekick Fact Card (if any lookups exist) */}
+      {room.lookups && room.lookups.length > 0 && !isJudgingBreak && !isFinalDecision && (
+        <div className="absolute bottom-28 left-8 max-w-md bg-slate-950/90 border border-emerald-500/50 rounded-2xl p-3.5 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+            <span className="text-[10px] uppercase font-black tracking-wider text-emerald-400">
+              Live Sidekick Fact Check
+            </span>
+            <span className="text-[10px] text-slate-500">• {room.lookups[0].timestamp}</span>
+          </div>
+          <div className="text-xs font-bold text-white mb-0.5">{room.lookups[0].query}</div>
+          <p className="text-[11px] text-slate-300 line-clamp-2">{room.lookups[0].summary}</p>
+        </div>
+      )}
     </div>
   );
 }

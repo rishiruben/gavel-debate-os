@@ -11,9 +11,10 @@ export function getOrCreateRoom(id: string, initialProps?: Partial<DebateState>)
 
   const defaultRoom: DebateState = {
     id,
-    title: initialProps?.title || 'Championship Live Debate',
+    title: initialProps?.title || 'Live Broadcast Discussion',
     proposition: initialProps?.proposition || 'Resolved: Artificial Intelligence code generation will obsolete human software engineers by 2028.',
-    formatName: initialProps?.formatName || 'Standard 3-Round Collegiate',
+    formatName: initialProps?.formatName || 'Standard 3-Round Format',
+    mode: initialProps?.mode || 'DEBATE',
     totalRounds: 3,
     currentRoundIndex: 0,
     currentPhase: 'LOBBY',
@@ -23,20 +24,24 @@ export function getOrCreateRoom(id: string, initialProps?: Partial<DebateState>)
       p1: {
         id: 'p1',
         name: initialProps?.participants?.p1?.name || 'Alex Chen',
-        side: 'AFFIRMATIVE',
+        role: initialProps?.participants?.p1?.role || 'Speaker 1',
+        side: initialProps?.participants?.p1?.role || 'Speaker 1',
         avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
         isReady: true,
         isMuted: false,
         scoreTotal: 0,
+        speakingTimeSeconds: 0,
       },
       p2: {
         id: 'p2',
         name: initialProps?.participants?.p2?.name || 'Marcus Vance',
-        side: 'NEGATIVE',
+        role: initialProps?.participants?.p2?.role || 'Speaker 2',
+        side: initialProps?.participants?.p2?.role || 'Speaker 2',
         avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
         isReady: true,
         isMuted: false,
         scoreTotal: 0,
+        speakingTimeSeconds: 0,
       },
     },
     rounds: [
@@ -66,6 +71,7 @@ export function getOrCreateRoom(id: string, initialProps?: Partial<DebateState>)
       },
     ],
     claims: [],
+    lookups: [],
     transcript: [],
     audienceVotes: {
       roundNumber: 1,

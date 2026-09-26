@@ -149,9 +149,9 @@ export default function DebaterStage({ params }: { params: Promise<{ id: string 
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-sm text-white">GAVEL STAGE</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                me.side === 'AFFIRMATIVE' ? 'bg-blue-500/20 text-blue-300' : 'bg-rose-500/20 text-rose-300'
+                debaterId === 'p1' ? 'bg-blue-500/20 text-blue-300' : 'bg-amber-500/20 text-amber-300'
               }`}>
-                {me.side}
+                {me.role || (debaterId === 'p1' ? 'Speaker 1' : 'Speaker 2')}
               </span>
             </div>
             <span className="text-xs text-slate-400">{me.name}</span>
@@ -166,15 +166,15 @@ export default function DebaterStage({ params }: { params: Promise<{ id: string 
               debaterId === 'p1' ? 'bg-blue-600 text-white' : 'bg-slate-900 text-slate-400'
             }`}
           >
-            Affirmative (P1)
+            {room.participants.p1.name} ({room.participants.p1.role || 'P1'})
           </button>
           <button
             onClick={() => setDebaterId('p2')}
             className={`px-3 py-1 rounded-lg text-xs font-bold transition ${
-              debaterId === 'p2' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-slate-400'
+              debaterId === 'p2' ? 'bg-amber-600 text-white' : 'bg-slate-900 text-slate-400'
             }`}
           >
-            Negative (P2)
+            {room.participants.p2.name} ({room.participants.p2.role || 'P2'})
           </button>
         </div>
       </header>

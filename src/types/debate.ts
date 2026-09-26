@@ -7,14 +7,18 @@ export type DebatePhase =
   | 'THE_SECOND_JUDGING'
   | 'FINAL_DECISION';
 
+export type ShowMode = 'DEBATE' | 'PODCAST';
+
 export interface Participant {
   id: string;
   name: string;
-  side: 'AFFIRMATIVE' | 'NEGATIVE';
+  role: string; // e.g. "Speaker 1", "Speaker 2", "Host", "Guest", "Affirmative", "Negative"
+  side?: string; // backwards compatibility
   avatar?: string;
   isReady: boolean;
   isMuted: boolean;
   scoreTotal: number;
+  speakingTimeSeconds?: number;
 }
 
 export interface Claim {
@@ -28,6 +32,16 @@ export interface Claim {
   rebuttedBy?: string;
   rebuttalSnippet?: string;
   factCheckStatus?: 'UNVERIFIED' | 'SUPPORTED' | 'DISPUTED';
+}
+
+export interface LookupItem {
+  id: string;
+  query: string;
+  summary: string;
+  source: string;
+  isVerified: boolean;
+  timestamp: string;
+  speakerName?: string;
 }
 
 export interface RubricDimension {
@@ -104,6 +118,7 @@ export interface DebateState {
   title: string;
   proposition: string;
   formatName: string;
+  mode: ShowMode;
   totalRounds: number;
   currentRoundIndex: number;
   currentPhase: DebatePhase;
@@ -115,6 +130,7 @@ export interface DebateState {
   };
   rounds: DebateRound[];
   claims: Claim[];
+  lookups: LookupItem[];
   transcript: {
     id: string;
     speakerId: string;
