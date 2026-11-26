@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gavel</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main class="panel">
+    <header class="header">
+      <h1 class="title">Gavel</h1>
+      <span id="lemonade-status" class="status">Checking</span>
+    </header>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="left-name">Left speaker</label>
+        <input id="left-name" type="text" value="Alex" maxlength="24" />
+      </div>
+      <div class="field">
+        <label for="right-name">Right speaker</label>
+        <input id="right-name" type="text" value="Marcus" maxlength="24" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="input-mode">Audio source</label>
+      <select id="input-mode">
+        <option value="captions">YouTube captions</option>
+        <option value="mic">Microphone</option>
+      </select>
+    </div>
+
+    <div class="actions">
+      <button id="toggle-overlay" class="btn-primary" type="button">Start overlay</button>
+      <button id="reset-scores" class="btn-secondary" type="button">Reset</button>
+    </div>
+
+    <form id="manual-form" class="manual-row">
+      <label for="manual-input" class="sr-only">Send a line to Lemonade</label>
+      <input id="manual-input" type="text" placeholder="Type a spoken line to score" />
+      <button id="manual-send" class="btn-secondary" type="submit">Score</button>
+    </form>
+
+    <p id="error-msg" class="error" hidden></p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

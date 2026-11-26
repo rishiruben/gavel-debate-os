@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrCreateRoom, advanceRoundPhase, updateRoom } from '@/lib/state/debate-store';
+import { LemonadeClient } from '@/lib/ai/lemonade-client';
 import { nanoid } from 'nanoid';
 
 export async function GET(
@@ -75,39 +76,46 @@ export async function POST(
       };
       room.transcript.push(entry);
 
-      // Auto-extract a high-level claim if text is substantial
-      if (text.length > 25) {
-        const claimText = text.length > 120 ? text.substring(0, 117) + '...' : text;
-        const opponentSpeakerId = speakerId === 'p1' ? 'p2' : 'p1';
+      // Extract claims using local Lemonade Server
+      if (text.length > 20) {
+        const client = new LemonadeClient();
+        const priorOpponentClaims = room.claims
+          .filter(c => c.speakerId !== speakerId)
+          .slice(-5)
+          .map(c => ({ speakerName: c.speakerName, text: c.text }));
 
-        // Check if this sounds like a rebuttal or a fresh assertion
-        const isRebuttal = text.toLowerCase().includes('disagree') ||
-          text.toLowerCase().includes('however') ||
-          text.toLowerCase().includes('wrong') ||
-          text.toLowerCase().includes('contrary') ||
-          text.toLowerCase().includes('fallacy');
-
-        room.claims.push({
-          id: nanoid(),
-          roundNumber: currentRound.number,
-          speakerId,
+        const extracted = await client.extractClaims({
+          proposition: room.proposition,
           speakerName: speaker.name,
-          timestamp: entry.timestamp,
-          text: claimText,
-          status: isRebuttal ? 'REBUTTED' : 'ASSERTED',
-          rebuttedBy: isRebuttal ? speaker.name : undefined,
-          factCheckStatus: Math.random() > 0.4 ? 'SUPPORTED' : 'UNVERIFIED',
+          text,
+          existingClaims: priorOpponentClaims,
         });
 
-        // Podcast Sidekick: Generate an instant fact-check / lookup card if statistics, years, or entities are referenced
+        for (const c of extracted.claims.slice(0, 3)) {
+          const isRebuttal = c.rebutsPriorClaimIndex !== null && c.rebutsPriorClaimIndex !== undefined;
+          room.claims.push({
+            id: nanoid(),
+            roundNumber: currentRound.number,
+            speakerId,
+            speakerName: speaker.name,
+            timestamp: entry.timestamp,
+            text: c.text,
+            status: isRebuttal ? 'REBUTTED' : 'ASSERTED',
+            rebuttedBy: isRebuttal ? speaker.name : undefined,
+            factCheckStatus: c.category === 'FACTUAL' ? 'UNVERIFIED' : undefined,
+          });
+        }
+
+        // Podcast Sidekick: Run a real Lemonade lookup if numbers, stats, or studies are mentioned
         if (text.match(/\d+|percent|%|study|data|research|market|dollar|\$/i)) {
           if (!room.lookups) room.lookups = [];
+          const lookupResult = await client.lookupFact(text, room.proposition);
           room.lookups.unshift({
             id: nanoid(),
-            query: claimText.length > 50 ? claimText.substring(0, 47) + '...' : claimText,
-            summary: `Automated Sidekick Verification: Corroborated against industry benchmarking data. High confidence.`,
-            source: 'Live Verified Knowledge Base',
-            isVerified: true,
+            query: text.length > 60 ? text.substring(0, 57) + '...' : text,
+            summary: lookupResult.summary,
+            source: lookupResult.source,
+            isVerified: lookupResult.isVerified,
             timestamp: entry.timestamp,
             speakerName: speaker.name,
           });
@@ -118,12 +126,15 @@ export async function POST(
 
     case 'addLookup': {
       if (!room.lookups) room.lookups = [];
+      const query = payload?.query || 'Manual Query';
+      const client = new LemonadeClient();
+      const lookupResult = await client.lookupFact(query, room.proposition);
       room.lookups.unshift({
         id: nanoid(),
-        query: payload?.query || 'Manual Query',
-        summary: payload?.summary || 'Verified fact item.',
-        source: payload?.source || 'Host Research Assistant',
-        isVerified: true,
+        query,
+        summary: lookupResult.summary,
+        source: lookupResult.source,
+        isVerified: lookupResult.isVerified,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
       });
       break;

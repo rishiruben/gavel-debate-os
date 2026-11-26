@@ -127,8 +127,6 @@ export default function HostControlRoom({ params }: { params: Promise<{ id: stri
 
     await executeAction('addLookup', {
       query: lookupQuery.trim(),
-      summary: `Live Sidekick Research: Found verified references matching "${lookupQuery.trim()}". Relevant to current discussion segment.`,
-      source: 'Host Knowledge Assistant',
     });
     setLookupQuery('');
   };

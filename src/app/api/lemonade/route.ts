@@ -3,7 +3,7 @@ import { LemonadeClient } from '@/lib/ai/lemonade-client';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const baseUrl = searchParams.get('baseUrl') || process.env.LEMONADE_BASE_URL || 'http://localhost:8000/v1';
+  const baseUrl = searchParams.get('baseUrl') || process.env.LEMONADE_BASE_URL || 'http://localhost:13305/api/v1';
   const apiKey = searchParams.get('apiKey') || process.env.LEMONADE_API_KEY || 'lemonade';
   const model = searchParams.get('model') || process.env.LEMONADE_MODEL || 'default';
 

@@ -1,4 +1,4 @@
-import { buildRubricJudgingPrompt, GAVEL_SYSTEM_PROMPT } from './prompts';
+import { buildClaimExtractionPrompt, buildRubricJudgingPrompt, GAVEL_SYSTEM_PROMPT } from './prompts';
 
 export interface LemonadeConnectionStatus {
   isConnected: boolean;
@@ -9,13 +9,32 @@ export interface LemonadeConnectionStatus {
   error?: string;
 }
 
+function parseJsonResponse(raw: string): any {
+  const cleaned = raw
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/i, '')
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf('{');
+    const end = cleaned.lastIndexOf('}');
+    if (start !== -1 && end > start) {
+      return JSON.parse(cleaned.slice(start, end + 1));
+    }
+    throw new Error('Failed to parse JSON from Lemonade response');
+  }
+}
+
 export class LemonadeClient {
   private baseUrl: string;
   private apiKey: string;
   private model: string;
 
   constructor(
-    baseUrl: string = process.env.LEMONADE_BASE_URL || 'http://localhost:8000/v1',
+    baseUrl: string = process.env.LEMONADE_BASE_URL || 'http://localhost:13305/api/v1',
     apiKey: string = process.env.LEMONADE_API_KEY || 'lemonade',
     model: string = process.env.LEMONADE_MODEL || 'default'
   ) {
@@ -30,37 +49,55 @@ export class LemonadeClient {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-      const res = await fetch(`${this.baseUrl}/models`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        signal: controller.signal,
-      });
+      const [modelsRes, healthRes] = await Promise.all([
+        fetch(`${this.baseUrl}/models`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${this.apiKey}` },
+          signal: controller.signal,
+        }),
+        fetch(`${this.baseUrl}/health`, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${this.apiKey}` },
+          signal: controller.signal,
+        }).catch(() => null),
+      ]);
 
       clearTimeout(timeoutId);
       const latencyMs = Date.now() - startTime;
 
-      if (!res.ok) {
+      if (!modelsRes.ok) {
         return {
           isConnected: false,
           baseUrl: this.baseUrl,
           model: this.model,
           latencyMs,
           availableModels: [],
-          error: `HTTP ${res.status}: ${res.statusText}`,
+          error: `HTTP ${modelsRes.status}: ${modelsRes.statusText}`,
         };
       }
 
-      const data = await res.json();
-      const availableModels = Array.isArray(data.data)
+      const data = await modelsRes.json();
+      const availableModels: string[] = Array.isArray(data.data)
         ? data.data.map((m: { id: string }) => m.id)
         : ['default'];
+
+      let loadedModel: string | undefined;
+      if (healthRes && healthRes.ok) {
+        const healthData = await healthRes.json().catch(() => null);
+        if (healthData?.model_loaded) {
+          loadedModel = healthData.model_loaded;
+        }
+      }
+
+      const resolvedModel =
+        this.model !== 'default'
+          ? this.model
+          : loadedModel || (availableModels.length > 0 ? availableModels[0] : 'default');
 
       return {
         isConnected: true,
         baseUrl: this.baseUrl,
-        model: this.model === 'default' && availableModels.length > 0 ? availableModels[0] : this.model,
+        model: resolvedModel,
         latencyMs,
         availableModels,
       };
@@ -76,20 +113,23 @@ export class LemonadeClient {
     }
   }
 
-  async judgeRound(params: {
-    proposition: string;
-    roundNumber: number;
-    p1Name: string;
-    p2Name: string;
-    transcript: { speakerName: string; text: string }[];
-    claims: { speakerName: string; text: string; status: string }[];
-  }) {
-    const userPrompt = buildRubricJudgingPrompt(params);
+  private async resolveModel(): Promise<string> {
+    if (this.model && this.model !== 'default') {
+      return this.model;
+    }
+    const status = await this.checkHealth();
+    if (status.isConnected && status.model && status.model !== 'default') {
+      return status.model;
+    }
+    throw new Error(status.error || 'Lemonade server is not reachable');
+  }
+
+  private async chatJson(systemPrompt: string, userPrompt: string, timeoutMs: number = 45000): Promise<{ data: any; model: string }> {
+    const activeModel = await this.resolveModel();
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s maximum timeout for local model
-
       const res = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -97,13 +137,13 @@ export class LemonadeClient {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: this.model === 'default' ? 'llama-3.3-70b' : this.model,
+          model: activeModel,
           messages: [
-            { role: 'system', content: GAVEL_SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.2,
-          response_format: { type: 'json_object' },
+          max_tokens: 2048,
         }),
         signal: controller.signal,
       });
@@ -118,10 +158,101 @@ export class LemonadeClient {
       const content = json.choices?.[0]?.message?.content;
       if (!content) throw new Error('Empty response from Lemonade');
 
-      return JSON.parse(content);
+      return { data: parseJsonResponse(content), model: activeModel };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  async extractClaims(params: {
+    proposition: string;
+    speakerName: string;
+    text: string;
+    existingClaims: { speakerName: string; text: string }[];
+  }): Promise<{ claims: { text: string; category: string; rebutsPriorClaimIndex: number | null }[]; source: 'lemonade' | 'fallback' }> {
+    try {
+      const prompt = buildClaimExtractionPrompt(
+        params.proposition,
+        params.speakerName,
+        params.text,
+        params.existingClaims
+      );
+      const { data } = await this.chatJson(
+        'You extract concise claims and rebuttals from live speech. Return strict JSON only.',
+        prompt,
+        20000
+      );
+      if (Array.isArray(data?.claims) && data.claims.length > 0) {
+        return { claims: data.claims, source: 'lemonade' };
+      }
+      throw new Error('No claims array returned');
+    } catch (err) {
+      console.warn('Lemonade claim extraction failed, using heuristic fallback:', err);
+      const claimText = params.text.length > 120 ? params.text.substring(0, 117) + '...' : params.text;
+      const isRebuttal = /disagree|however|wrong|contrary|fallacy|actually|but /i.test(params.text);
+      return {
+        claims: [
+          {
+            text: claimText,
+            category: 'VALUE_JUDGMENT',
+            rebutsPriorClaimIndex: isRebuttal && params.existingClaims.length > 0 ? params.existingClaims.length : null,
+          },
+        ],
+        source: 'fallback',
+      };
+    }
+  }
+
+  async lookupFact(query: string, topicContext: string): Promise<{ summary: string; source: string; isVerified: boolean }> {
+    try {
+      const prompt = `Live broadcast topic: "${topicContext}"
+Query or claim to check: "${query}"
+
+Provide a concise, factual 1-2 sentence sidekick note that helps a live host or debater evaluate this point. Be honest if exact real-time numbers cannot be verified offline without web access.
+Return strict JSON only:
+{
+  "summary": "concise factual context or caveat",
+  "isVerified": true or false
+}`;
+      const { data, model } = await this.chatJson(
+        'You are a concise, honest live podcast sidekick and fact-checker. Never fabricate statistics. Return strict JSON only.',
+        prompt,
+        20000
+      );
+      return {
+        summary: data?.summary || 'No context returned.',
+        source: `Lemonade (${model})`,
+        isVerified: Boolean(data?.isVerified),
+      };
+    } catch (err) {
+      console.warn('Lemonade lookup failed, using fallback:', err);
+      return {
+        summary: `Offline fallback: Could not reach Lemonade Server to evaluate "${query}".`,
+        source: 'Offline Fallback',
+        isVerified: false,
+      };
+    }
+  }
+
+  async judgeRound(params: {
+    proposition: string;
+    roundNumber: number;
+    p1Name: string;
+    p2Name: string;
+    transcript: { speakerName: string; text: string }[];
+    claims: { speakerName: string; text: string; status: string }[];
+  }) {
+    const userPrompt = buildRubricJudgingPrompt(params);
+
+    try {
+      const { data, model } = await this.chatJson(GAVEL_SYSTEM_PROMPT, userPrompt, 60000);
+      if (!data?.p1Scorecard || !data?.p2Scorecard || !data?.theSecond) {
+        throw new Error('Incomplete rubric JSON from Lemonade');
+      }
+      return { ...data, _source: 'lemonade', _model: model };
     } catch (err) {
       console.warn('Lemonade judge request failed or server offline, using intelligent debate fallback evaluator:', err);
-      return this.generateSimulatedJudgment(params);
+      return { ...this.generateSimulatedJudgment(params), _source: 'fallback', _model: 'heuristic' };
     }
   }
 
@@ -141,7 +272,6 @@ export class LemonadeClient {
       .filter(t => t.speakerName === params.p2Name)
       .reduce((sum, t) => sum + t.text.split(' ').length, 0);
 
-    // Heuristics based on rebuttal engagement & transcript presence
     const p1Arg = Math.min(28, 20 + Math.floor((p1WordCount % 17) / 2));
     const p1Rebuttal = Math.min(27, 19 + Math.floor((p1WordCount % 13) / 2));
     const p1Clarity = 17;
