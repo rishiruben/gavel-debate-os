@@ -49,3 +49,21 @@ LEMONADE_MODEL=llama-3.3-70b
 2. Set the URL to your room's overlay link: `http://localhost:3000/room/<ROOM_ID>/overlay`
 3. Width: `1920`, Height: `1080`.
 4. Check **"Shutdown source when not visible"** (optional) and click **OK**.
+
+---
+
+## 🧩 Chrome Extension (`extension/`)
+
+Gavel also includes a Manifest V3 Chrome extension that renders a live plus/minus scoring overlay directly on video streams, powered by a local [Lemonade Server](https://lemonade-server.ai) instance (`http://localhost:13305`).
+
+* **Features:** Configurable Left/Right speaker labels, YouTube captions or microphone audio input, and manual spoken-line scoring from the extension popup.
+* **Load Unpacked in Chrome:**
+  1. Open `chrome://extensions` and enable **Developer mode**.
+  2. Click **Load unpacked** and select the [`extension/`](./extension) directory.
+  3. Start your local Lemonade Server on port `13305`, open the Gavel popup, and click **Start overlay**.
+
+---
+
+## 📄 License
+
+MIT — see [LICENSE](./LICENSE) for details.
