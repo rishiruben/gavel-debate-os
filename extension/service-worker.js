@@ -117,7 +117,8 @@ Return strict JSON:
           { role: 'user', content: userPrompt },
         ],
         temperature: 0.2,
-        max_tokens: 768,
+        response_format: { type: 'json_object' },
+        max_tokens: 2048,
       }),
     });
 
